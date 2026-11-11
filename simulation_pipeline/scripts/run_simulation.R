@@ -19,56 +19,19 @@ suppressPackageStartupMessages({
   library(data.table)
 })
 
-# Load arguments
+# Read the resolved settings and seed this simulation.
 args = commandArgs(trailingOnly = TRUE)
 output_dir = args[1]
 beta_sd = as.numeric(args[2])
-utils_path = args[3]
+source(args[3])
+lens_bp = readRDS(args[4])
+set.seed(as.integer(args[5]))
+invisible(list2env(jsonlite::fromJSON(args[6]), envir = environment()))
 
-source(utils_path)
-
-# Name of the two conditions.
-conditions = c("control", "treatment")
-
-# How many replicates for each condition. 
-reps = 2 
-
-# The total number of samples (reps+conditions+IP/IN)
-n_samples = reps*length(conditions)*2
-
-# Total number of genes to simulate. 
-n_genes = 40000 
-
-# Number of windows with potential binding. 
-n_bind = 20000
-
-######## for simulating expression #########
-beta_shift = 0 # controls the "direction" of the treatment effect on expression (e.g. net increase vs net decrease in expression). 
-Mean_ex = 10 # controls the mean expression count for each gene. 
-SD_ex = 2.5 # controls the standard deviation of counts for the mean above. 
-dispMeanRel = function(x) 2/x + 0.05 # Control the dispersion for the mean counts. 
-ex_size_factors = c(0.95, 1.2, 2.15, 1.75, 0.6, 0.7, 1.4, 1.3) # A vector of size factors for the initial gene expression (represents sequencing depth). 
-
-####### for simulating background (downsampling and splitting counts into windows) #######
-exon_frac  = 0.10 # Fraction of the genome that is active (exonic).
-exon_peakiness   = 0.2  # Spread of reads within exons. smaller = spikier = higher maxima.
-intron_peakiness = 0.2 # Spread of reads within introns.
-intron_exon_balance = 0.6 # Controls the propoportion of reads that go to intronic regions.
-mean_exon_windows = 2 # Mean number of consecutive exons. 
-mean_intron_windows = 8 # Mean number of consecutive introns. 
-window_noise_sd = 0.4 # Variation in how reads are split into windows across replicates. 
-
-####### for simulating binding/pulldown #########
-zeta_mean = 0.1 # controls the "direction" of the treatment effect on binding (e.g. net increase vs net decrease in binding).
-zeta_sd = 0.65 # controls the deviation of the treatment effects on binding.
-zeta_rep_sd = 0.25 # controls the deviation of the treatment effect on binding across reps. 
-Mean_b = 0.45 # controls the mean effect of binding (interceptMean).
-Shape_b = 60 # controls the shape of the gamma distribution. 
-Min_b = 0.1 # Sets a minimum effect of binding (binding never decreases read count).
-pulldown_a = 1 
-pulldown_b = 0.01
-diff_frac = 0.80 # Controls the fraction of windows affected by the differential treatment.
-ip_size_factors = rep(1, n_samples/2) # A vector of size factors for the IP pulldown (represents pulldown efficiency).
+# Set up the two-condition count model.
+reps = 2
+n_samples = reps * 4
+dispMeanRel = function(x) dispersion_scale / x + dispersion_floor
 
 # Create all necessary directories. 
 dir.create(output_dir, showWarnings = FALSE)
@@ -88,13 +51,15 @@ dir.create(file.path(output_dir, "DIBS/intermediates"), showWarnings = FALSE)
 ############################ Run the simulation #############################
 
 # Simulate the initial reads. 
-out <- simulate_gene_counts_with_length(n_genes = n_genes, n_samples = n_samples, beta_shift = beta_shift,
+out = simulate_gene_counts_with_length(n_genes = n_genes, n_samples = n_samples, beta_shift = beta_shift,
                                         beta_sd = beta_sd, Mean_ex = Mean_ex, SD_ex = SD_ex,
-                                        dispMeanRel = dispMeanRel, sizeFactors = ex_size_factors)
-gene_counts <- out$gene_counts
+                                        dispMeanRel = dispMeanRel, lens_bp = lens_bp,
+                                        sizeFactors = ex_size_factors)
+gene_counts = out$gene_counts
 
 # Downsample reads to get background. 
-background_counts <- downsample_counts(subset(gene_counts, select = -c(gene_name)), mean_prop = 0.05)
+background_counts = downsample_counts(subset(gene_counts, select = -c(gene_name)),
+                                      mean_prop = background_fraction)
 background_counts$gene_name = gene_counts$gene_name
 write_tsv(background_counts, paste0(output_dir, "/gene_counts/background_count.tsv"))
 

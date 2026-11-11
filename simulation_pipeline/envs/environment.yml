@@ -636,4 +636,3 @@ dependencies:
       - pysam==0.23.3
       - sorted-nearest==0.0.39
       - tabulate==0.9.0
-prefix: /tscc/nfs/home/kflanagan/miniconda3/envs/DIBS

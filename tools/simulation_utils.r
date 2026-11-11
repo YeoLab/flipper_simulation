@@ -89,16 +89,13 @@ attach_abundance_and_length = function(mu_mat, gene_length_bp) {
 }
 
 simulate_gene_counts_with_length = function(n_genes, n_samples, beta_shift,
-                                             beta_sd, Mean_ex, SD_ex, dispMeanRel, 
-                                             sizeFactors = rep(1, n_samples)) {
+                                            beta_sd, Mean_ex, SD_ex, dispMeanRel,
+                                            lens_bp, sizeFactors = rep(1, n_samples)) {
     
     # Generate DESeq-style gene counts.
     deseq = simulate_deseq_mu_and_counts(n_genes = n_genes, n_samples = n_samples, betaShift = beta_shift,
                                         betaSD = beta_sd, interceptMean = Mean_ex, interceptSD = SD_ex,
                                         dispMeanRel = dispMeanRel,sizeFactors = sizeFactors)
-    
-    # Load full empirical length distribution.
-    lens_bp = readRDS("../../NONO_data/lens_bp.rds")
     
     # Sample gene lengths directly from empirical distribution.
     gene_length_bp = as.integer(sample(lens_bp, size = n_genes, replace = TRUE))
@@ -297,6 +294,9 @@ split_counts_into_windows = function(df, gene_length_bp = NULL, window_bp = 100,
         active_idx = which(feature_layout$feature_type == "exon")
         inactive_idx = which(feature_layout$feature_type == "intron")
 
+        # Allocate all reads to exons when the gene has no intron windows.
+        intron_prob = if (length(inactive_idx) > 0) intron_exon_balance else 0
+
         # Generate a gene-level baseline distribution over active windows.
         alpha_gene = rep(exon_peakiness, length(active_idx))
         p0_active = rgamma(length(active_idx), shape = alpha_gene, rate = 1)
@@ -324,7 +324,7 @@ split_counts_into_windows = function(df, gene_length_bp = NULL, window_bp = 100,
             } else {
                 
                 # Partition counts into inactive/background and active/enriched components.
-                X_inactive = rbinom(1, size = X, prob = intron_exon_balance)
+                X_inactive = rbinom(1, size = X, prob = intron_prob)
                 X_active = X - X_inactive
 
                 full_counts = integer(n_win)
@@ -342,7 +342,7 @@ split_counts_into_windows = function(df, gene_length_bp = NULL, window_bp = 100,
                 }
 
                 # Allocate counts across intronic windows.
-                if (X_inactive > 0 && length(inactive_idx) > 0) {
+                if (X_inactive > 0) {
                     inactive_counts = as.vector(rmultinom(1, size = X_inactive, prob = p_inactive_s))
                     full_counts[inactive_idx] = inactive_counts
                 }

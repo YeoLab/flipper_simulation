@@ -80,11 +80,62 @@ Once all parameters for the simulation have been selected, you can simply run al
 ## comparison_to_real_data
 This notebook generates the comparisons between real and simulated eCLIP data shown in figure 5 and supplemental figures 2 and 3 of [the Flipper manuscript](https://doi.org/10.64898/2026.03.13.711628). The real data used is from the NONO dataset described in the manuscript and originally generated in [https://doi.org/10.1038/s41589-023-01270-0](https://doi.org/10.1038/s41589-023-01270-0). A copy of this data including only the samples/metadata needed to run the comparisons notebook is provided in the `NONO_data` folder. 
 
-## demonstrate_hier_norm_need.ipyny
+## demonstrate_hier_norm_need.ipynb
 This notebook generates plots used in supplemental figure 1 of [the Flipper manuscript](https://doi.org/10.64898/2026.03.13.711628).
 
 # Simulation_pipeline
 
-This pipeline is a Snakemake implementation of the code contained in the `Simulation_notebooks/run_simulation` notebooks. It runs 2 different combinations of treatment perturbation effect on gene expression (`beta_sd`) across 5 replicates. The resulting data are then analyzed using the `evaluate_methods.ipynb` notebook, and the results are summarized in Figure 5 of the [Flipper manuscript](https://doi.org/10.64898/2026.03.13.711628) using `make_plot.ipynb`.
+## Install Snakemake 9
 
-Generally speaking, this pipeline is only intended for performing benchmarking for the Flipper manuscript. That being said, if you would like to use this pipeline to run many simulations in parrallel, it would be a fairly simple adjustment. Just remove the rules/outputs related to Flipper/Skipper, modify the simulation parameters present in `scripts/run_simulation.R`, and then modify the directory names listed in the `SIMS` variable at the top of `run_scaled_simulations` (`beta_sd` values are extracted from these directory names). 
+If you need Conda, follow the [Miniconda installation guide](https://www.anaconda.com/docs/getting-started/miniconda/install).
+Create the same Snakemake environment used by Flipper:
+
+```bash
+conda create -n snakemake9 -c conda-forge -c bioconda snakemake=9.12.0
+```
+
+Snakemake creates the simulation's Conda environment on the first run.
+
+## Choose a pipeline config
+
+- [manuscript.yaml](simulation_pipeline/configs/manuscript.yaml) runs expression-effect SDs 0 and 2
+  for five repetitions each and writes to `simulation_pipeline/results/`.
+- [test.yaml](simulation_pipeline/configs/test.yaml) runs one 800-gene simulation with 150 bound
+  sites and writes to `simulation_pipeline/test_results/`.
+
+The batch runs each value in `BETA_SD` for `SIM_REPEATS` independent repetitions. Set the core model
+parameters in the Simulation parameters section. Relative values of `RUN_DIR` are resolved from the directory
+containing the Snakefile. Use an absolute `RUN_DIR` to write the batch to scratch.
+Snakemake finds the R scripts and bundled reference data relative to the Snakefile.
+
+## Run on Slurm
+
+Install the Slurm executor in the Snakemake environment:
+
+```bash
+conda install -n snakemake9 -c conda-forge -c bioconda snakemake-executor-plugin-slurm=1.4.0
+```
+
+Set the Conda prefix, Slurm account, partition, and QoS for your cluster in
+[`simulation_pipeline/profiles/config.yaml`](simulation_pipeline/profiles/config.yaml).
+Set the `--configfile` line in the launcher to `configs/test.yaml` or `configs/manuscript.yaml`.
+From the repository root, run:
+
+```bash
+conda activate snakemake9
+cd simulation_pipeline
+bash run_scaled_simulation.sh
+```
+
+## Run locally
+
+From the repository root, activate the same environment and choose a config explicitly:
+
+```bash
+conda activate snakemake9
+cd simulation_pipeline
+snakemake -s snakemake_sim_scale.py --configfile configs/test.yaml --cores 1 --use-conda
+```
+
+The benchmark notebooks use the manuscript run names and paths. If you change the output directory
+or scenarios, update the notebook paths and scenario settings before analyzing the results.

@@ -6,7 +6,6 @@ skip-script-cleanup: true
 retries: 0
 nolock: true
 default-storage-provider: none
-rerun-triggers: mtime
 keep-going: true
 use-singularity: true
 use-conda: true

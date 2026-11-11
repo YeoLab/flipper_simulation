@@ -1,0 +1,47 @@
+################################# Batch settings #################################
+
+# Set the output directory relative to the Snakefile, or use an absolute path.
+RUN_DIR: results
+
+# Use the same repetition seeds for each expression-effect SD.
+BETA_SD: [0, 2]
+SIM_REPEATS: 5
+SEED: 60
+
+################################# Simulation parameters #################################
+
+# Set the number of genes and bound sites. The current workflow uses two replicates per condition.
+n_genes: 40000
+n_bind: 20000
+
+# Set the gene expression model on the log2 scale.
+beta_shift: 0
+Mean_ex: 10
+SD_ex: 2.5
+dispersion_scale: 2
+dispersion_floor: 0.05
+# List libraries as control IN1, IP1, IN2, IP2, then treatment in the same order.
+ex_size_factors: [0.95, 1.2, 2.15, 1.75, 0.6, 0.7, 1.4, 1.3]
+
+# Downsample background reads and distribute them across exonic and intronic windows.
+background_fraction: 0.05
+exon_frac: 0.10
+exon_peakiness: 0.2
+intron_peakiness: 0.2
+intron_exon_balance: 0.6
+mean_exon_windows: 2
+mean_intron_windows: 8
+window_noise_sd: 0.4
+
+# Set the baseline binding, treatment effects, and pulldown variability.
+zeta_mean: 0.1
+zeta_sd: 0.65
+zeta_rep_sd: 0.25
+Mean_b: 0.45
+Shape_b: 60
+Min_b: 0.1
+pulldown_a: 1
+pulldown_b: 0.01
+diff_frac: 0.80
+# List IP libraries as control IP1, IP2, then treatment IP1, IP2.
+ip_size_factors: [1, 1, 1, 1]
